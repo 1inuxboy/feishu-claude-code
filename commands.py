@@ -17,6 +17,12 @@ from session_store import SessionStore, scan_cli_sessions, generate_summary, _ge
 
 PLUGINS_DIR = os.path.expanduser("~/.claude/plugins")
 
+# Windows 路径示例，用于错误提示
+_WIN_PATH_HINT = (
+    "\n💡 Windows 路径请用正斜杠，例如：`C:/Users/YourName/Projects`"
+    if sys.platform == "win32" else ""
+)
+
 
 VALID_MODES = {
     "default": "每次工具调用需确认",
@@ -491,7 +497,7 @@ async def _handle_workspace_command(
         if len(parts) >= 3:
             path = os.path.expanduser(parts[2])
         if not os.path.isdir(path):
-            return f"❌ 路径不存在：`{path}`"
+            return f"❌ 路径不存在：`{path}`{_WIN_PATH_HINT}"
         await store.save_workspace(user_id, name, path)
         return f"✅ 已保存工作空间 `{name}` → `{path}`"
 
@@ -513,7 +519,7 @@ async def _handle_workspace_command(
             return "⚠️ 用法：`/ws set 路径`"
         path = os.path.expanduser(parts[1])
         if not os.path.isdir(path):
-            return f"❌ 路径不存在：`{path}`"
+            return f"❌ 路径不存在：`{path}`{_WIN_PATH_HINT}"
         old_name = (await store.get_current_raw(user_id, chat_id)).get("workspace", "")
         await store.set_cwd(user_id, chat_id, path)
         suffix = "，并解除原工作空间绑定" if old_name else ""
@@ -626,7 +632,7 @@ async def handle_command(
             return "⚠️ 用法：`/cd [路径]`"
         path = os.path.expanduser(args)
         if not os.path.isdir(path):
-            return f"❌ 路径不存在：`{path}`"
+            return f"❌ 路径不存在：`{path}`{_WIN_PATH_HINT}"
         old_name = (await store.get_current_raw(user_id, chat_id)).get("workspace", "")
         await store.set_cwd(user_id, chat_id, path)
         suffix = "，并解除原工作空间绑定" if old_name else ""
