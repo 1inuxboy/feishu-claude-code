@@ -134,6 +134,31 @@ def test_run_claude_retries_without_resume_on_empty_stderr_failure(monkeypatch):
     assert second.stdin.closed is True
 
 
+def test_run_claude_retries_without_resume_on_no_conversation_found(monkeypatch):
+    """session 已被删除/过期时，CLI 报 'No conversation found'，应自动退回新 session"""
+    first = FakeProc(
+        [],
+        stderr=b"No conversation found with session ID: sid_old",
+        returncode=1,
+    )
+    second = FakeProc([
+        b'{"type":"system","session_id":"sid_new"}\n',
+        b'{"type":"result","session_id":"sid_new","result":"fresh answer"}\n',
+    ])
+    procs = iter([first, second])
+
+    async def fake_create_subprocess_exec(*args, **kwargs):
+        return next(procs)
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create_subprocess_exec)
+
+    text, session_id, used_fallback = asyncio.run(run_claude("hi", session_id="sid_old"))
+
+    assert text == "fresh answer"
+    assert session_id == "sid_new"
+    assert used_fallback is True
+
+
 def test_run_claude_streams_text_chunks_via_callback(monkeypatch):
     """Test that on_text_chunk callback fires for text deltas"""
     proc = FakeProc([
